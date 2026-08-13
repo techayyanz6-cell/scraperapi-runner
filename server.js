@@ -151,49 +151,66 @@ function getStandbyKeys() {
   return data.keys.filter(k => k.status === 'standby' && (k.credits > 50 || k.credits === -1));
 }
 
-// Ensure up to maxActiveKeys are in 'active' status simultaneously
+// Ensure ALL valid keys with credits are ACTIVE instances simultaneously
 async function ensureActivePool() {
   if (rotationLock) return;
   rotationLock = true;
   try {
-    const targetCount = data.maxActiveKeys || 4;
-    let activeKeys = getActiveKeys();
-
-    while (activeKeys.length < targetCount) {
-      const standbyList = getStandbyKeys();
-      if (!standbyList.length) break;
-
-      const nextKey = standbyList[0];
-      nextKey.status = 'active';
-      nextKey.lastActivated = new Date().toISOString();
-      log(`[KEY POOL PROMOTION] 🟢 Promoted Key ${short(nextKey.key)}... to ACTIVE (${getActiveKeys().length}/${targetCount} active)`);
-      activeKeys = getActiveKeys();
+    for (const k of data.keys) {
+      if (k.credits > 50 || k.credits === -1) {
+        if (k.status !== 'active') {
+          k.status = 'active';
+          k.lastActivated = new Date().toISOString();
+          log(`[KEY INSTANCE ACTIVE] 🟢 Key ${short(k.key)}... is running as a live instance!`);
+        }
+      }
     }
 
+    const activeKeys = getActiveKeys();
+    const workersPerKey = data.workersPerKey || 4;
+    const totalWorkers = activeKeys.length * workersPerKey;
+
     if (activeKeys.length > 0) {
-      state.statusMessage = `Running with ${activeKeys.length} active keys simultaneously`;
+      state.statusMessage = `Running ${activeKeys.length} parallel key instances (${totalWorkers} concurrent processes)`;
+      log(`[MULTI-INSTANCE POOL] 🚀 ${activeKeys.length} Active Key Instances (${totalWorkers} parallel worker processes)`);
     } else {
       state.statusMessage = 'Idle — All keys exhausted. Please add new keys!';
-      log(`[KEY POOL EMPTY] ⚠️ All keys are exhausted! Waiting for new keys via dashboard...`);
+      log(`[KEY POOL EMPTY] ⚠️ No active keys with credits. Waiting for new keys via dashboard...`);
     }
 
     saveData();
+    ensureWorkerPool();
   } finally {
     rotationLock = false;
   }
 }
 
-// When a specific active key runs out of credits, rotate just THAT key
+// Dynamically scale worker loops based on active keys
+function ensureWorkerPool() {
+  if (!state.running) return;
+  const activeKeys = getActiveKeys();
+  const targetWorkers = Math.max(1, activeKeys.length * (data.workersPerKey || 4));
+
+  while (workerPromises.length < targetWorkers && !stopFlag) {
+    const workerId = workerPromises.length + 1;
+    workerPromises.push(worker(workerId));
+    log(`[WORKER SPAWNED] Spawned parallel worker process #${workerId}`);
+  }
+}
+
+// When a specific active key runs out of credits, mark only that key
 async function rotateExhaustedKey(keyStr, reason = 'Credits exhausted') {
   const target = data.keys.find(k => k.key.toLowerCase() === keyStr.toLowerCase());
-  if (target && target.status === 'active') {
+  if (target) {
     target.status = 'exhausted';
     target.exhaustedAt = new Date().toISOString();
     target.exhaustedReason = reason;
-    log(`[KEY EXHAUSTED] 🔴 Active Key ${short(target.key)}... marked EXHAUSTED (Reason: ${reason})`);
+    log(`[KEY EXHAUSTED] 🔴 Key ${short(target.key)}... marked EXHAUSTED (Reason: ${reason})`);
   }
 
-  await ensureActivePool();
+  saveData();
+  const activeKeys = getActiveKeys();
+  log(`[REMAINING INSTANCES] ${activeKeys.length} key instances still active and running.`);
 }
 
 async function verifyAndClassifyKey(keyStr) {
@@ -715,7 +732,7 @@ app.post('/api/start', async (req, res) => {
   state.running = true;
   state.startedAt = Date.now();
 
-  const totalWorkers = (data.maxActiveKeys || 4) * (data.workersPerKey || 4);
+  const totalWorkers = Math.max(4, activeKeys.length * (data.workersPerKey || 4));
   workerPromises = [];
   for (let i = 1; i <= totalWorkers; i++) {
     workerPromises.push(worker(i));
@@ -767,25 +784,25 @@ process.on('unhandledRejection', (reason) => {
 const HOST = process.env.IP || '::';
 app.listen(PORT, HOST, async () => {
   console.log(`====================================================`);
-  console.log(`🚀 ScraperAPI 24/7 Multi-Key Traffic Runner Server running!`);
+  console.log(`🚀 ScraperAPI 24/7 All-Key Multi-Instance Server running!`);
   console.log(`🌐 Dashboard URL: http://${HOST}:${PORT}`);
-  console.log(`⚡ Max Active Keys: ${data.maxActiveKeys || 4} simultaneously`);
-  console.log(`🔥 Workers Per Key: ${data.workersPerKey || 4} (${(data.maxActiveKeys || 4) * (data.workersPerKey || 4)} total concurrent processes)`);
+  console.log(`⚡ Mode: All added keys run as parallel active instances`);
+  console.log(`🔥 Workers Per Key: ${data.workersPerKey || 4}`);
   console.log(`====================================================`);
 
   if (data.autoStart && data.links && data.links.length > 0) {
     await ensureActivePool();
     const activeKeys = getActiveKeys();
     if (activeKeys.length > 0) {
-      console.log(`[AUTO-START] Auto-starting 24/7 worker engine with ${activeKeys.length} active keys...`);
+      console.log(`[AUTO-START] Auto-starting 24/7 worker engine with ${activeKeys.length} active key instances...`);
       stopFlag = false;
       state.running = true;
       state.startedAt = Date.now();
-      const totalWorkers = (data.maxActiveKeys || 4) * (data.workersPerKey || 4);
+      const totalWorkers = Math.max(4, activeKeys.length * (data.workersPerKey || 4));
       for (let i = 1; i <= totalWorkers; i++) {
         workerPromises.push(worker(i));
       }
-      log(`[AUTO-START] 24/7 Engine active with ${totalWorkers} concurrent processes across ${activeKeys.length} active keys.`);
+      log(`[AUTO-START] 24/7 Engine active with ${totalWorkers} concurrent processes across all ${activeKeys.length} active keys.`);
     }
   }
 });

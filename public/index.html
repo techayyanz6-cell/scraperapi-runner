@@ -511,8 +511,8 @@
       <div class="metric-label">Errors</div>
     </div>
     <div class="metric-card green">
-      <div class="metric-value" id="mActiveKeys">0 / 4</div>
-      <div class="metric-label">Active Keys Pool</div>
+      <div class="metric-value" id="mActiveKeys">0 Instances</div>
+      <div class="metric-label">Active Key Instances</div>
     </div>
     <div class="metric-card cyan">
       <div class="metric-value" id="mWorkers">0</div>
@@ -528,13 +528,15 @@
         <div class="panel-title">
           <span>🔑 ScraperAPI Multi-Key Pool</span>
           <span id="keysCountBadge" class="badge-pill standby">0 Keys</span>
+        </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-secondary btn-sm" onclick="refreshKeyCredits()">🔄 Check Credits</button>
           <button class="btn btn-primary btn-sm" onclick="resetAllKeys()">⚡ Reset & Activate All</button>
         </div>
+      </div>
 
       <div class="active-banner" id="activePoolBanner">
-        <span>⚡</span> <span>Up to <strong>4 keys run simultaneously</strong> in parallel. When any key exhausts its credits, the next standby key takes over instantly!</span>
+        <span>⚡</span> <span><strong>All added keys run simultaneously in parallel!</strong> Har key ke 4 workers chalte hain. Nayi key add karte hi uski instance foran start ho jati hai.</span>
       </div>
 
       <!-- Add Key Input / Bulk paste -->
@@ -701,7 +703,7 @@ function renderUI() {
   $('mClicks').textContent = `${(s.clickSuccess || 0)} / ${(s.clicks || 0)}`;
   $('mSessions').textContent = (s.sessions || 0).toLocaleString();
   $('mErrors').textContent = (s.errors || 0).toLocaleString();
-  $('mActiveKeys').textContent = `${stateData.activeKeysCount || 0} / ${d.maxActiveKeys || 4}`;
+  $('mActiveKeys').textContent = `${stateData.activeKeysCount || 0} Instances`;
   $('mWorkers').textContent = isRunning ? (stateData.workers || 16) : 0;
 
   // Keys list
