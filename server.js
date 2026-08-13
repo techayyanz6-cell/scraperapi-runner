@@ -716,10 +716,11 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // Auto-boot runner on server startup
-app.listen(PORT, '0.0.0.0', async () => {
+const HOST = process.env.IP || '::';
+app.listen(PORT, HOST, async () => {
   console.log(`====================================================`);
   console.log(`🚀 ScraperAPI 24/7 Multi-Key Traffic Runner Server running!`);
-  console.log(`🌐 Dashboard URL: http://0.0.0.0:${PORT}`);
+  console.log(`🌐 Dashboard URL: http://${HOST}:${PORT}`);
   console.log(`⚡ Max Active Keys: ${data.maxActiveKeys || 4} simultaneously`);
   console.log(`🔥 Workers Per Key: ${data.workersPerKey || 4} (${(data.maxActiveKeys || 4) * (data.workersPerKey || 4)} total concurrent processes)`);
   console.log(`====================================================`);
