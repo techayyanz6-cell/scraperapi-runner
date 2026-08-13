@@ -10,6 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 const LOG_FILE = path.join(__dirname, 'runner.log');
+const SLEEPING_KEYS_FILE = path.join(__dirname, 'sleeping_keys.json');
 const PORT = parseInt(process.env.PORT, 10) || 8100;
 const API = 'https://api.scraperapi.com';
 
@@ -48,6 +49,35 @@ let data = {
   autoStart: true,
   deviceMix: 'balanced'
 };
+
+// Helper to load sleeping keys
+function loadSleepingKeys() {
+  try {
+    if (fs.existsSync(SLEEPING_KEYS_FILE)) {
+      return JSON.parse(fs.readFileSync(SLEEPING_KEYS_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Error loading sleeping_keys.json:', e.message);
+  }
+  return [];
+}
+
+// Helper to save sleeping keys with unique keys constraint
+function saveSleepingKeys(keysList) {
+  try {
+    const unique = [];
+    const seen = new Set();
+    for (const kObj of keysList) {
+      if (kObj && kObj.key && !seen.has(kObj.key.toLowerCase())) {
+        seen.add(kObj.key.toLowerCase());
+        unique.push(kObj);
+      }
+    }
+    fs.writeFileSync(SLEEPING_KEYS_FILE, JSON.stringify(unique, null, 2));
+  } catch (e) {
+    console.error('Failed to save sleeping_keys.json:', e.message);
+  }
+}
 
 // Load saved data if exists
 try {
@@ -499,6 +529,75 @@ async function worker(workerId) {
   }
 }
 
+// Background credit recovery checker (polls sleeping_keys.json every 15 minutes)
+async function startCreditRecoveryChecker() {
+  log(`[RECOVERY ENGINE] 🤖 Persistent credit recovery engine active. Scanning master registry every 15 minutes...`);
+  
+  const checkAllSleepingKeys = async () => {
+    try {
+      const sleeping = loadSleepingKeys();
+      if (!sleeping.length) return;
+      
+      log(`[RECOVERY CHECK] 🔄 Scanning credits for all ${sleeping.length} keys in master registry...`);
+      let changed = false;
+      
+      for (const kObj of sleeping) {
+        const info = await fetchAccountCredits(kObj.key);
+        kObj.lastChecked = new Date().toISOString();
+        if (info.credits !== -1) {
+          kObj.credits = info.credits;
+          kObj.requests = info.requests;
+          
+          if (info.credits > 50) {
+            kObj.status = 'standby';
+            
+            // Check if key is already in data.keys active UI pool
+            const activePoolIndex = data.keys.findIndex(x => x.key.toLowerCase() === kObj.key.toLowerCase());
+            if (activePoolIndex === -1) {
+              const restoredKey = {
+                key: kObj.key,
+                credits: info.credits,
+                requests: info.requests,
+                status: 'standby',
+                addedAt: new Date().toISOString(),
+                lastChecked: new Date().toISOString()
+              };
+              data.keys.push(restoredKey);
+              log(`[CREDIT RECOVERY] 🎉 Key ${short(kObj.key)}... has recovered ${info.credits} credits! Automatically restored to active pool.`);
+              changed = true;
+            } else {
+              const activeKeyObj = data.keys[activePoolIndex];
+              if (activeKeyObj.status === 'exhausted') {
+                activeKeyObj.status = 'standby';
+                activeKeyObj.credits = info.credits;
+                activeKeyObj.exhaustedReason = null;
+                log(`[CREDIT RECOVERY] 🎉 Key ${short(kObj.key)}... credits refreshed. Standby/Active restored.`);
+                changed = true;
+              }
+            }
+          } else {
+            kObj.status = 'exhausted';
+          }
+        }
+      }
+      
+      saveSleepingKeys(sleeping);
+      if (changed) {
+        await ensureActivePool();
+        saveData();
+      }
+    } catch (err) {
+      console.error('[RECOVERY CHECK ERROR]', err.message);
+    }
+  };
+
+  // Run once immediately on startup after 5 seconds
+  setTimeout(checkAllSleepingKeys, 5000);
+
+  // Set 15-minute interval
+  setInterval(checkAllSleepingKeys, 15 * 60 * 1000);
+}
+
 // REST APIs
 
 // State endpoint
@@ -550,6 +649,15 @@ app.post('/api/keys', async (req, res) => {
     log(`[KEY ADDED] Added key ${short(k)} (Status: ${keyObj.status}, Credits: ${keyObj.credits})`);
   }
 
+  // Persist added keys to the master sleeping keys registry
+  if (added.length > 0) {
+    const sleeping = loadSleepingKeys();
+    for (const newKeyObj of added) {
+      sleeping.push(newKeyObj);
+    }
+    saveSleepingKeys(sleeping);
+  }
+
   // Ensure active pool fills up to maxActiveKeys (e.g. 4 keys)
   await ensureActivePool();
 
@@ -562,15 +670,27 @@ app.post('/api/keys', async (req, res) => {
   });
 });
 
-// Delete a key
+// Delete a key (removes from active UI pool, but preserves in master sleeping keys registry)
 app.delete('/api/keys/:key', async (req, res) => {
   const targetKey = req.params.key.trim().toLowerCase();
   const idx = data.keys.findIndex(k => k.key.toLowerCase() === targetKey);
   if (idx === -1) return res.status(404).json({ error: 'Key not found' });
 
-  const wasActive = data.keys[idx].status === 'active';
+  const deletedKeyObj = data.keys[idx];
+  const wasActive = deletedKeyObj.status === 'active';
   data.keys.splice(idx, 1);
-  log(`[KEY REMOVED] Removed key ${short(targetKey)}`);
+  log(`[KEY REMOVED] Key ${short(targetKey)}... removed from active UI pool (archived in sleeping_keys.json for credit recovery checks)`);
+
+  // Ensure deleted key is preserved/updated in sleeping keys registry
+  const sleeping = loadSleepingKeys();
+  const foundIndex = sleeping.findIndex(k => k.key.toLowerCase() === targetKey);
+  if (foundIndex === -1) {
+    sleeping.push(deletedKeyObj);
+  } else {
+    // Keep it updated
+    sleeping[foundIndex].status = 'exhausted';
+  }
+  saveSleepingKeys(sleeping);
 
   if (wasActive) {
     await ensureActivePool();
@@ -770,6 +890,9 @@ app.listen(PORT, HOST, async () => {
   console.log(`⚡ Mode: All added keys run as parallel active instances`);
   console.log(`🔥 Workers Per Key: ${data.workersPerKey || 4}`);
   console.log(`====================================================`);
+
+  // Start the background credit recovery engine
+  startCreditRecoveryChecker();
 
   if (data.autoStart && data.links && data.links.length > 0) {
     await ensureActivePool();

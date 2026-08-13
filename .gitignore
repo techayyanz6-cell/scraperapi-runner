@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 .env
 data.json
+sleeping_keys.json
