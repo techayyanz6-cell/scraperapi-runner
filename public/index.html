@@ -447,6 +447,29 @@
       margin-top: 6px;
     }
 
+    .country-btn {
+      padding: 7px 13px;
+      border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .country-btn:hover {
+      border-color: rgba(99,179,237,0.5);
+      background: rgba(99,179,237,0.08);
+      color: var(--text-primary);
+    }
+    .country-btn.selected {
+      border-color: #38bdf8;
+      background: rgba(56,189,248,0.15);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
     .active-banner {
       background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.1));
       border: 1px solid rgba(16, 185, 129, 0.3);
@@ -599,11 +622,13 @@
         <input type="number" id="inputRenderPct" min="0" max="100" placeholder="60">
         <div class="help-hint">Full browser JS load (triggers ad clicks).</div>
       </div>
-      <div>
-        <label style="font-size: 12px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Target Countries (ISO 2-letter):</label>
-        <input type="text" id="inputCountries" placeholder="us,gb,ca,au,de,nl,za,ng">
-        <div class="help-hint">Geo-targets rotated via ScraperAPI.</div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <label style="font-size:12px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:10px;">🌍 Target Countries — Click to Select / Deselect:</label>
+      <div id="countrySelector" style="display:flex; flex-wrap:wrap; gap:8px;">
       </div>
+      <div class="help-hint" style="margin-top:8px;">Sirf selected countries par traffic jayegi. Baki countries par credits waste nahi honge.</div>
     </div>
   </div>
 
@@ -823,6 +848,19 @@ function renderUI() {
       term.scrollTop = term.scrollHeight;
     }
   }
+
+  // Sync settings inputs
+  if ($('inputMaxActiveKeys') && !$('inputMaxActiveKeys').matches(':focus')) $('inputMaxActiveKeys').value = d.maxActiveKeys || 4;
+  if ($('inputWorkersPerKey') && !$('inputWorkersPerKey').matches(':focus')) $('inputWorkersPerKey').value = d.workersPerKey || 4;
+  if ($('inputRenderPct') && !$('inputRenderPct').matches(':focus')) $('inputRenderPct').value = d.renderPct || 60;
+
+  // Sync country selector buttons with saved settings
+  const savedCountries = d.countries || [];
+  if (savedCountries.length > 0) {
+    buildCountrySelector(savedCountries);
+  } else {
+    buildCountrySelector(['nl']);
+  }
 }
 
 function escapeHtml(str) {
@@ -915,9 +953,52 @@ async function deleteLink(idx) {
   }
 }
 
+const ALL_COUNTRIES = [
+  { code: 'nl', label: 'Netherlands 🇳🇱' },
+  { code: 'us', label: 'USA 🇺🇸' },
+  { code: 'gb', label: 'UK 🇬🇧' },
+  { code: 'de', label: 'Germany 🇩🇪' },
+  { code: 'ca', label: 'Canada 🇨🇦' },
+  { code: 'au', label: 'Australia 🇦🇺' },
+  { code: 'ng', label: 'Nigeria 🇳🇬' },
+  { code: 'za', label: 'S. Africa 🇿🇦' },
+  { code: 'fr', label: 'France 🇫🇷' },
+  { code: 'it', label: 'Italy 🇮🇹' },
+  { code: 'tr', label: 'Turkey 🇹🇷' },
+  { code: 'in', label: 'India 🇮🇳' },
+  { code: 'br', label: 'Brazil 🇧🇷' },
+  { code: 'mx', label: 'Mexico 🇲🇽' },
+  { code: 'ph', label: 'Philippines 🇵🇭' },
+];
+
+let selectedCountries = new Set(['nl']);
+
+function buildCountrySelector(currentCountries) {
+  if (currentCountries && currentCountries.length > 0) {
+    selectedCountries = new Set(currentCountries);
+  }
+  const container = $('countrySelector');
+  if (!container) return;
+  container.innerHTML = '';
+  ALL_COUNTRIES.forEach(({ code, label }) => {
+    const btn = document.createElement('button');
+    btn.className = 'country-btn' + (selectedCountries.has(code) ? ' selected' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      if (selectedCountries.has(code)) {
+        if (selectedCountries.size > 1) selectedCountries.delete(code);
+      } else {
+        selectedCountries.add(code);
+      }
+      buildCountrySelector([...selectedCountries]);
+    };
+    container.appendChild(btn);
+  });
+}
+
 async function saveSettings() {
   try {
-    const countries = $('inputCountries').value.split(',').map(c => c.trim()).filter(Boolean);
+    const countries = [...selectedCountries];
     const renderPct = parseInt($('inputRenderPct').value) || 60;
     const maxActiveKeys = parseInt($('inputMaxActiveKeys').value) || 4;
     const workersPerKey = parseInt($('inputWorkersPerKey').value) || 4;
@@ -927,7 +1008,7 @@ async function saveSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ countries, renderPct, maxActiveKeys, workersPerKey })
     });
-    alert('Settings saved successfully!');
+    alert(`✅ Settings saved! Traffic will now go to: ${countries.map(c=>c.toUpperCase()).join(', ')}`);
     fetchState();
   } catch (e) {
     alert('Error saving settings: ' + e.message);

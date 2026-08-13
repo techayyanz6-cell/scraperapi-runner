@@ -13,7 +13,7 @@ const LOG_FILE = path.join(__dirname, 'runner.log');
 const PORT = parseInt(process.env.PORT, 10) || 8100;
 const API = 'https://api.scraperapi.com';
 
-const DEFAULT_COUNTRIES = ['ng', 'ng', 'ng', 'us', 'us', 'gb', 'de', 'za', 'nl', 'ca'];
+const DEFAULT_COUNTRIES = ['us', 'gb', 'ca', 'au', 'de', 'nl', 'za', 'ng', 'fr', 'it'];
 
 const DESKTOP_UAS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -411,15 +411,14 @@ async function worker(workerId) {
     // Execute render (1 credit per request)
     let res = await render(activeKey, link, country, device, full);
 
-    // If 200 but not full landing, retry with high-converting pool to hit 50%+ landings
+    // If 200 but not full landing, retry once more (same nl country — no credit waste)
     if (res.status === 200 && !res.landing) {
       for (let attempt = 1; attempt <= 2; attempt++) {
-        const c2 = pick(['ng', 'ng', 'us', 'gb', 'de', 'za']);
         const d2 = pick(['desktop', 'desktop', 'mobile']);
-        const retryRes = await render(activeKey, link, c2, d2, full);
+        const retryRes = await render(activeKey, link, 'nl', d2, full);
         if (retryRes.status === 200 && retryRes.landing) {
           res = retryRes;
-          country = c2;
+          device = d2;
           break;
         }
         if (retryRes.status === 429 || retryRes.status === 403) break;
