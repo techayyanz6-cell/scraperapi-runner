@@ -849,10 +849,15 @@ function renderUI() {
     }
   }
 
-  // Sync settings inputs
-  if ($('inputMaxActiveKeys') && !$('inputMaxActiveKeys').matches(':focus')) $('inputMaxActiveKeys').value = d.maxActiveKeys || 4;
-  if ($('inputWorkersPerKey') && !$('inputWorkersPerKey').matches(':focus')) $('inputWorkersPerKey').value = d.workersPerKey || 4;
-  if ($('inputRenderPct') && !$('inputRenderPct').matches(':focus')) $('inputRenderPct').value = d.renderPct || 60;
+  // Sync settings inputs (safely)
+  try {
+    const elMak = document.getElementById('inputMaxActiveKeys');
+    const elWpk = document.getElementById('inputWorkersPerKey');
+    const elRpct = document.getElementById('inputRenderPct');
+    if (elMak && document.activeElement !== elMak) elMak.value = d.maxActiveKeys || 4;
+    if (elWpk && document.activeElement !== elWpk) elWpk.value = d.workersPerKey || 4;
+    if (elRpct && document.activeElement !== elRpct) elRpct.value = d.renderPct || 60;
+  } catch (_) {}
 
   // Sync country selector buttons with saved settings
   const savedCountries = d.countries || [];
