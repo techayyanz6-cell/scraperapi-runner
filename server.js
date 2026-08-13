@@ -411,11 +411,11 @@ async function worker(workerId) {
     // Execute render (1 credit per request)
     let res = await render(activeKey, link, country, device, full);
 
-    // If 200 but not full landing, retry once more (same nl country — no credit waste)
-    if (res.status === 200 && !res.landing) {
+    // If 200 but not full landing, only retry in fast mode (full is false) to prevent credit waste on expensive JS renders
+    if (res.status === 200 && !res.landing && !full) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         const d2 = pick(['desktop', 'desktop', 'mobile']);
-        const retryRes = await render(activeKey, link, 'nl', d2, full);
+        const retryRes = await render(activeKey, link, 'nl', d2, false);
         if (retryRes.status === 200 && retryRes.landing) {
           res = retryRes;
           device = d2;
