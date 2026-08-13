@@ -401,8 +401,8 @@ async function worker(workerId) {
 
     // Pick country and device
     const countries = data.countries && data.countries.length ? data.countries : DEFAULT_COUNTRIES;
-    const country = pick(countries);
-    const device = Math.random() < 0.6 ? 'desktop' : 'mobile';
+    let country = pick(countries);
+    let device = Math.random() < 0.6 ? 'desktop' : 'mobile';
     const full = Math.random() < ((data.renderPct || 60) / 100);
 
     const activeKey = activeKeyObj.key;
