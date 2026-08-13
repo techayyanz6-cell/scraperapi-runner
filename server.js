@@ -295,7 +295,7 @@ async function render(key, link, country, device, full) {
       landing: isLanding,
       device,
       ads: [],
-      rawBodySnippet: body.slice(0, 200)
+      rawBodySnippet: body.slice(0, 500)
     };
   } catch (e) {
     return {
@@ -411,17 +411,31 @@ async function worker(workerId) {
     // Execute render (1 credit per request)
     let res = await render(activeKey, link, country, device, full);
 
-    // If 200 but not full landing, only retry in fast mode (full is false) to prevent credit waste on expensive JS renders
-    if (res.status === 200 && !res.landing && !full) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const d2 = pick(['desktop', 'desktop', 'mobile']);
-        const retryRes = await render(activeKey, link, 'nl', d2, false);
-        if (retryRes.status === 200 && retryRes.landing) {
-          res = retryRes;
-          device = d2;
-          break;
+    // If 200 but tiny body (JS redirect like size=118), extract redirect URL and follow it directly
+    if (res.status === 200 && res.size <= 300 && !res.landing) {
+      const jsRedirectUrl = (res.rawBodySnippet || '').match(
+        /(?:window\.location(?:\.replace|\.href|\.assign)?\s*[=(]\s*["']|meta[^>]+content=["'][^"']*url=)(https?:\/\/[^"']+)/i
+      );
+      if (jsRedirectUrl && jsRedirectUrl[1]) {
+        const redirectTarget = jsRedirectUrl[1];
+        log(`[JS-REDIRECT] Following redirect → ${redirectTarget.slice(0, 60)}`);
+        const redirectRes = await render(activeKey, redirectTarget, country, device, false);
+        if (redirectRes.status === 200 && redirectRes.landing) {
+          res = redirectRes;
+          log(`[JS-REDIRECT OK] Landed on redirect target — size=${res.size}`);
         }
-        if (retryRes.status === 429 || retryRes.status === 403) break;
+      } else if (!full) {
+        // No redirect URL found in fast mode — retry with different country
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const d2 = pick(['desktop', 'desktop', 'mobile']);
+          const retryRes = await render(activeKey, link, country, d2, false);
+          if (retryRes.status === 200 && retryRes.landing) {
+            res = retryRes;
+            device = d2;
+            break;
+          }
+          if (retryRes.status === 429 || retryRes.status === 403) break;
+        }
       }
     }
 
