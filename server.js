@@ -294,7 +294,7 @@ async function render(key, link, country, device, full) {
       title: title.trim().slice(0, 60),
       landing: isLanding,
       device,
-      ads: (full && isLanding) ? extractAds(body) : [],
+      ads: [],
       rawBodySnippet: body.slice(0, 200)
     };
   } catch (e) {
@@ -443,12 +443,7 @@ async function worker(workerId) {
         pc.landings++;
         pk.landings++;
         pl.landings++;
-        log(`[LANDING OK] ${country.toUpperCase()}/${device} [${keyShort}] size=${res.size} title="${res.title}" ads=${res.ads.length}`);
-
-        if (res.ads.length > 2 && activeSessionsCount < MAX_SESSIONS && full && !stopFlag) {
-          state.sessions++;
-          clickSession(activeKey, country, device, link, res.ads);
-        }
+        log(`[LANDING OK] ${country.toUpperCase()}/${device} [${keyShort}] size=${res.size} title="${res.title}"`);
       } else {
         state.empty++;
         pc.empty++;
