@@ -269,8 +269,7 @@ async function render(key, link, country, device, full) {
     url: link,
     country,
     device,
-    user_agent: ua,
-    residential: 'true'   // Residential IPs — bypass CPM network proxy detection
+    user_agent: ua
   });
   if (full) {
     params.set('render', 'true');
