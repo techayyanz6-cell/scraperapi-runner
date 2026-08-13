@@ -408,34 +408,33 @@ async function worker(workerId) {
     const activeKey = activeKeyObj.key;
     const keyShort = short(activeKey);
 
-    // Execute render (1 credit per request)
-    let res = await render(activeKey, link, country, device, full);
+    // Step 1: Always start with FAST mode (render=false) — 1 credit guaranteed
+    let res = await render(activeKey, link, country, device, false);
 
-    // If 200 but tiny body (JS redirect like size=118), extract redirect URL and follow it directly
-    if (res.status === 200 && res.size <= 300 && !res.landing) {
-      const jsRedirectUrl = (res.rawBodySnippet || '').match(
-        /(?:window\.location(?:\.replace|\.href|\.assign)?\s*[=(]\s*["']|meta[^>]+content=["'][^"']*url=)(https?:\/\/[^"']+)/i
-      );
-      if (jsRedirectUrl && jsRedirectUrl[1]) {
-        const redirectTarget = jsRedirectUrl[1];
-        log(`[JS-REDIRECT] Following redirect → ${redirectTarget.slice(0, 60)}`);
-        const redirectRes = await render(activeKey, redirectTarget, country, device, false);
-        if (redirectRes.status === 200 && redirectRes.landing) {
-          res = redirectRes;
-          log(`[JS-REDIRECT OK] Landed on redirect target — size=${res.size}`);
-        }
-      } else if (!full) {
-        // No redirect URL found in fast mode — retry with different country
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          const d2 = pick(['desktop', 'desktop', 'mobile']);
-          const retryRes = await render(activeKey, link, country, d2, false);
-          if (retryRes.status === 200 && retryRes.landing) {
-            res = retryRes;
-            device = d2;
-            break;
-          }
-          if (retryRes.status === 429 || retryRes.status === 403) break;
-        }
+    // Step 2: If tiny response (size=118 JS redirect / empty)
+    // → Count as visit (impression registered server-side), spend no more credits
+    if (res.status === 200 && res.size <= 300) {
+      log(`[VISIT HIT] ${country.toUpperCase()}/${device} [${keyShort}] size=${res.size} (redirect/impression counted)`);
+      state.visits++;
+      const pc2 = state.perCountry[country] = state.perCountry[country] || { visits: 0, landings: 0, empty: 0 };
+      const pk2 = state.perKey[keyShort] = state.perKey[keyShort] || { visits: 0, landings: 0, errors: 0, clicks: 0, clickSuccess: 0 };
+      const pl2 = state.perLink[link.slice(0, 45)] = state.perLink[link.slice(0, 45)] || { visits: 0, landings: 0 };
+      pc2.visits++; pk2.visits++; pl2.visits++;
+      state.empty++;
+      pc2.empty++;
+      consecutiveErrors = 0;
+      const delay2 = 1500 + Math.floor(Math.random() * 2000);
+      await new Promise(r => setTimeout(r, delay2));
+      continue;
+    }
+
+    // Step 3: If proper page loaded in fast mode AND JS Render % is set
+    // → Re-fetch with render=true (5 credits) for full impression quality
+    if (res.status === 200 && res.size > 300 && full) {
+      log(`[RENDER UPGRADE] ${country.toUpperCase()}/${device} [${keyShort}] Upgrading to full render...`);
+      const renderRes = await render(activeKey, link, country, device, true);
+      if (renderRes.status === 200) {
+        res = renderRes;
       }
     }
 
