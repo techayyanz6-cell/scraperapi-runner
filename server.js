@@ -458,8 +458,9 @@ async function worker(workerId) {
       state.errors++;
       pk.errors++;
       consecutiveErrors++;
-      const backoff = Math.min(2500 * consecutiveErrors, 15000);
-      log(`[RATE LIMIT ${res.status}] [${keyShort}] Backing off for ${backoff / 1000}s...`);
+      const is499 = res.status === 499;
+      const backoff = is499 ? (6000 + Math.floor(Math.random() * 6000)) : Math.min(3000 * consecutiveErrors, 18000);
+      log(`[${is499 ? 'TIMEOUT' : 'RATE LIMIT'} ${res.status}] [${keyShort}] Cooldown backoff for ${Math.round(backoff / 1000)}s...`);
       await new Promise(r => setTimeout(r, backoff));
     } else if (res.status === 403) {
       state.errors++;
@@ -511,8 +512,8 @@ async function worker(workerId) {
       }
     }
 
-    // Delay between worker requests (300ms - 800ms)
-    const delay = 300 + Math.floor(Math.random() * 500);
+    // Delay between worker requests (1500ms - 3500ms) to prevent concurrency limit exhaustion
+    const delay = 1500 + Math.floor(Math.random() * 2000);
     await new Promise(r => setTimeout(r, delay));
   }
 }
