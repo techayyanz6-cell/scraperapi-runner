@@ -783,19 +783,17 @@ function renderUI() {
     `).join('');
   }
 
-  // Settings inputs
-  if (document.activeElement !== $('inputCountries')) {
-    $('inputCountries').value = (d.countries || []).join(',');
-  }
-  if (document.activeElement !== $('inputRenderPct')) {
-    $('inputRenderPct').value = d.renderPct != null ? d.renderPct : 60;
-  }
-  if (document.activeElement !== $('inputMaxActiveKeys')) {
-    $('inputMaxActiveKeys').value = d.maxActiveKeys || 4;
-  }
-  if (document.activeElement !== $('inputWorkersPerKey')) {
-    $('inputWorkersPerKey').value = d.workersPerKey || 4;
-  }
+
+  // Settings inputs — null-safe sync
+  const elMak  = document.getElementById('inputMaxActiveKeys');
+  const elWpk  = document.getElementById('inputWorkersPerKey');
+  const elRpct = document.getElementById('inputRenderPct');
+  if (elMak  && document.activeElement !== elMak)  elMak.value  = d.maxActiveKeys || 4;
+  if (elWpk  && document.activeElement !== elWpk)  elWpk.value  = d.workersPerKey || 4;
+  if (elRpct && document.activeElement !== elRpct) elRpct.value = d.renderPct != null ? d.renderPct : 60;
+
+  // Sync country selector buttons
+  buildCountrySelector(d.countries && d.countries.length ? d.countries : null);
 
   // Country Breakdown Table
   const perCountry = s.perCountry || {};
@@ -847,24 +845,6 @@ function renderUI() {
     if (wasScrolledBottom) {
       term.scrollTop = term.scrollHeight;
     }
-  }
-
-  // Sync settings inputs (safely)
-  try {
-    const elMak = document.getElementById('inputMaxActiveKeys');
-    const elWpk = document.getElementById('inputWorkersPerKey');
-    const elRpct = document.getElementById('inputRenderPct');
-    if (elMak && document.activeElement !== elMak) elMak.value = d.maxActiveKeys || 4;
-    if (elWpk && document.activeElement !== elWpk) elWpk.value = d.workersPerKey || 4;
-    if (elRpct && document.activeElement !== elRpct) elRpct.value = d.renderPct || 60;
-  } catch (_) {}
-
-  // Sync country selector buttons with saved settings
-  const savedCountries = d.countries || [];
-  if (savedCountries.length > 0) {
-    buildCountrySelector(savedCountries);
-  } else {
-    buildCountrySelector(['nl']);
   }
 }
 
@@ -1041,6 +1021,7 @@ async function stopRunner() {
 }
 
 setInterval(fetchState, 1500);
+buildCountrySelector(null); // show all country buttons on page load
 fetchState();
 </script>
 </body>
