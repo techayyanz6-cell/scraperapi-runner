@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 const LOG_FILE = path.join(__dirname, 'runner.log');
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 8100;
 const API = 'https://api.scraperapi.com';
 
 const DEFAULT_COUNTRIES = ['us', 'gb', 'ca', 'au', 'de', 'nl', 'za', 'ng', 'fr', 'it'];
