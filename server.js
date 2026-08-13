@@ -13,7 +13,7 @@ const LOG_FILE = path.join(__dirname, 'runner.log');
 const PORT = parseInt(process.env.PORT, 10) || 8100;
 const API = 'https://api.scraperapi.com';
 
-const DEFAULT_COUNTRIES = ['us', 'gb', 'ca', 'au', 'de', 'nl', 'za', 'ng', 'fr', 'it'];
+const DEFAULT_COUNTRIES = ['ng', 'ng', 'ng', 'us', 'us', 'gb', 'de', 'za', 'nl', 'ca'];
 
 const DESKTOP_UAS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -391,26 +391,30 @@ async function worker(workerId) {
     const activeKey = activeKeyObj.key;
     const keyShort = short(activeKey);
 
-    // Execute render
-    const res = await render(activeKey, link, country, device, full);
+    // Execute render (1 credit per request)
+    let res = await render(activeKey, link, country, device, full);
+
+    // If 200 but not full landing, retry with high-converting pool to hit 50%+ landings
+    if (res.status === 200 && !res.landing) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const c2 = pick(['ng', 'ng', 'us', 'gb', 'de', 'za']);
+        const d2 = pick(['desktop', 'desktop', 'mobile']);
+        const retryRes = await render(activeKey, link, c2, d2, full);
+        if (retryRes.status === 200 && retryRes.landing) {
+          res = retryRes;
+          country = c2;
+          break;
+        }
+        if (retryRes.status === 429 || retryRes.status === 403) break;
+      }
+    }
 
     // Stats buckets
     const pk = state.perKey[keyShort] = state.perKey[keyShort] || { visits: 0, landings: 0, errors: 0, clicks: 0, clickSuccess: 0 };
     const pl = state.perLink[link.slice(0, 45)] = state.perLink[link.slice(0, 45)] || { visits: 0, landings: 0 };
     const pc = state.perCountry[country] = state.perCountry[country] || { visits: 0, landings: 0, empty: 0 };
 
-    // Credit Exhaustion Detection for this specific key
-    const isCreditExhausted = res.status === 403 ||
-      (res.status === 429 && consecutiveErrors > 3) ||
-      (res.rawBodySnippet && /request limit|quota|exceeded|out of credits/i.test(res.rawBodySnippet));
-
-    if (isCreditExhausted) {
-      log(`[QUOTA DETECTED] ScraperAPI returned ${res.status} for key ${keyShort} -> Rotating this key!`);
-      await rotateExhaustedKey(activeKey, `HTTP ${res.status} Quota limit reached`);
-      await new Promise(r => setTimeout(r, 1000));
-      continue;
-    }
-
+    // Handle HTTP Responses
     if (res.status === 200) {
       consecutiveErrors = 0;
       state.visits++;
@@ -438,24 +442,44 @@ async function worker(workerId) {
       state.errors++;
       pk.errors++;
       consecutiveErrors++;
-      const backoff = Math.min(4000 * consecutiveErrors, 20000);
+      const backoff = Math.min(2500 * consecutiveErrors, 15000);
       log(`[RATE LIMIT ${res.status}] [${keyShort}] Backing off for ${backoff / 1000}s...`);
       await new Promise(r => setTimeout(r, backoff));
+    } else if (res.status === 403) {
+      state.errors++;
+      pk.errors++;
+      consecutiveErrors++;
+      log(`[TARGET 403] [${keyShort}] Target returned 403 (Country: ${country})`);
+
+      // Only check credit balance if multiple consecutive 403s occur
+      if (consecutiveErrors >= 5) {
+        const check = await fetchAccountCredits(activeKey);
+        if (check.credits !== -1 && check.credits <= 50) {
+          log(`[CREDITS EXHAUSTED] ScraperAPI account verified: ${check.credits} credits left.`);
+          await rotateExhaustedKey(activeKey, `Verified credits left: ${check.credits}`);
+        } else {
+          consecutiveErrors = 0;
+          log(`[KEY OK] Key ${keyShort} still has ${check.credits} credits. Continuing...`);
+        }
+      }
+      await new Promise(r => setTimeout(r, 2000));
     } else {
       state.errors++;
       pk.errors++;
       consecutiveErrors++;
       log(`[ERROR ${res.status}] [${keyShort}] ${res.err || 'Request failed'} (Country: ${country})`);
-      if (consecutiveErrors > 5) {
+      if (consecutiveErrors >= 8) {
         const check = await fetchAccountCredits(activeKey);
         if (check.credits !== -1 && check.credits <= 50) {
           await rotateExhaustedKey(activeKey, `Verified credits left: ${check.credits}`);
+        } else {
+          consecutiveErrors = 0;
         }
       }
     }
 
-    // Periodic proactive credit verification
-    if (state.visits > 0 && state.visits % 50 === 0) {
+    // Periodic proactive credit verification (every 100 visits)
+    if (state.visits > 0 && state.visits % 100 === 0) {
       const activeList = getActiveKeys();
       for (const k of activeList) {
         fetchAccountCredits(k.key).then(info => {
@@ -585,12 +609,36 @@ app.post('/api/keys/refresh', async (req, res) => {
     k.credits = info.credits;
     k.requests = info.requests;
     k.lastChecked = new Date().toISOString();
-    if (k.status === 'active' && info.credits !== -1 && info.credits <= 50) {
+    if (info.credits > 50 || info.credits === -1) {
+      if (k.status === 'exhausted') k.status = 'standby';
+      k.exhaustedReason = null;
+    } else {
       k.status = 'exhausted';
-      k.exhaustedReason = 'Credits exhausted';
-    } else if (k.status === 'exhausted' && info.credits > 50) {
+      k.exhaustedReason = 'Credits <= 50 on check';
+    }
+  });
+
+  await Promise.all(promises);
+  await ensureActivePool();
+
+  saveData();
+  res.json({ ok: true, keys: data.keys });
+});
+
+// Reset and recheck ALL keys immediately
+app.post('/api/keys/reset-all', async (req, res) => {
+  log('[RESET ALL] Checking and reactivating all keys with credits...');
+  const promises = data.keys.map(async k => {
+    const info = await fetchAccountCredits(k.key);
+    k.credits = info.credits;
+    k.requests = info.requests;
+    k.lastChecked = new Date().toISOString();
+    if (info.credits > 50 || info.credits === -1) {
       k.status = 'standby';
       k.exhaustedReason = null;
+    } else {
+      k.status = 'exhausted';
+      k.exhaustedReason = 'Credits <= 50 on check';
     }
   });
 

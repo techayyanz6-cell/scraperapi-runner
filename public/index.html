@@ -528,9 +528,10 @@
         <div class="panel-title">
           <span>🔑 ScraperAPI Multi-Key Pool</span>
           <span id="keysCountBadge" class="badge-pill standby">0 Keys</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="refreshKeyCredits()">🔄 Check Credits</button>
+          <button class="btn btn-primary btn-sm" onclick="resetAllKeys()">⚡ Reset & Activate All</button>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="refreshKeyCredits()">🔄 Check Credits</button>
-      </div>
 
       <div class="active-banner" id="activePoolBanner">
         <span>⚡</span> <span>Up to <strong>4 keys run simultaneously</strong> in parallel. When any key exhausts its credits, the next standby key takes over instantly!</span>
@@ -870,6 +871,17 @@ async function refreshKeyCredits() {
     fetchState();
   } catch (e) {
     alert('Error refreshing credits: ' + e.message);
+  }
+}
+
+async function resetAllKeys() {
+  try {
+    const r = await fetch('/api/keys/reset-all', { method: 'POST' });
+    const res = await r.json();
+    alert('Checked and reactivated all keys with credits!');
+    fetchState();
+  } catch (e) {
+    alert('Error resetting keys: ' + e.message);
   }
 }
 
