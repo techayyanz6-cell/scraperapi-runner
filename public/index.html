@@ -792,8 +792,11 @@ function renderUI() {
   if (elWpk  && document.activeElement !== elWpk)  elWpk.value  = d.workersPerKey || 4;
   if (elRpct && document.activeElement !== elRpct) elRpct.value = d.renderPct != null ? d.renderPct : 60;
 
-  // Sync country selector buttons
-  buildCountrySelector(d.countries && d.countries.length ? d.countries : null);
+  // Sync country selector buttons — only once from server, then user controls it
+  if (!countrySyncDone && d.countries && d.countries.length > 0) {
+    buildCountrySelector(d.countries);
+    countrySyncDone = true;
+  }
 
   // Country Breakdown Table
   const perCountry = s.perCountry || {};
@@ -1020,8 +1023,9 @@ async function stopRunner() {
   }
 }
 
+let countrySyncDone = false; // sync country selection from server only once
 setInterval(fetchState, 1500);
-buildCountrySelector(null); // show all country buttons on page load
+buildCountrySelector(null); // show all buttons immediately on load
 fetchState();
 </script>
 </body>
