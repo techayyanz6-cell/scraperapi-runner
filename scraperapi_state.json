@@ -1,0 +1,56 @@
+{
+ "visits": 266,
+ "landings": 216,
+ "empty": 134,
+ "errors": 18,
+ "clicks": 89,
+ "clickSuccess": 65,
+ "perCountry": {
+  "eg": {
+   "visits": 50,
+   "landings": 37,
+   "empty": 13,
+   "clicks": 11,
+   "clickSuccess": 8
+  },
+  "ng": {
+   "visits": 150,
+   "landings": 122,
+   "empty": 28,
+   "clicks": 60,
+   "clickSuccess": 39
+  },
+  "de": {
+   "visits": 17,
+   "landings": 16,
+   "empty": 1,
+   "clicks": 0,
+   "clickSuccess": 0
+  },
+  "nl": {
+   "visits": 20,
+   "landings": 17,
+   "empty": 3,
+   "clicks": 3,
+   "clickSuccess": 3
+  },
+  "it": {
+   "visits": 29,
+   "landings": 24,
+   "empty": 5,
+   "clicks": 15,
+   "clickSuccess": 15
+  }
+ },
+ "perKey": {
+  "1469ed5c96c8b2e0a4430b9d3f9e7bec": {
+   "visits": 266,
+   "landings": 216,
+   "errors": 13,
+   "clicks": 89,
+   "clickSuccess": 65
+  }
+ },
+ "sessions": 30,
+ "updated": "2026-08-13T16:28:18.937Z"
+}

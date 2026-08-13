@@ -1,0 +1,57 @@
+{
+  "keys": [
+    {
+      "key": "6351512362a34786e5bf2a43eddda06d",
+      "credits": 0,
+      "requests": 5005,
+      "status": "exhausted",
+      "addedAt": "2026-08-13T19:46:50.612Z",
+      "lastChecked": "2026-08-13T19:46:50.612Z",
+      "exhaustedReason": "Credits <= 50 on check"
+    },
+    {
+      "key": "35f2f1c8842c39d7ef2ef7157e8095b6",
+      "credits": 0,
+      "requests": 5016,
+      "status": "exhausted",
+      "addedAt": "2026-08-13T19:46:59.172Z",
+      "lastChecked": "2026-08-13T19:46:59.172Z",
+      "exhaustedReason": "Credits <= 50 on check"
+    },
+    {
+      "key": "eabe82e46f518466ada50dba60bb8048",
+      "credits": 0,
+      "requests": 5077,
+      "status": "exhausted",
+      "addedAt": "2026-08-13T19:46:59.650Z",
+      "lastChecked": "2026-08-13T19:46:59.650Z",
+      "exhaustedReason": "Credits <= 50 on check"
+    }
+  ],
+  "links": [
+    "https://www.effectivecpmnetwork.com/mw6dcxpxp?key=a82a80fb72016668fb27decb6d8d487e",
+    "https://www.effectivecpmnetwork.com/ychumnca?key=d926c91e2df60b9b0e204aaf0bc24c62",
+    "https://www.effectivecpmnetwork.com/rrnc6wkj20?key=7229316f30175f8124af706edbe27aa8",
+    "https://www.effectivecpmnetwork.com/f0qx2zbz?key=55c9b86cf539b6f87e8274e633eafcf0"
+  ],
+  "countries": [
+    "us",
+    "gb",
+    "ca",
+    "au",
+    "de",
+    "nl",
+    "za",
+    "ng",
+    "fr",
+    "it"
+  ],
+  "maxActiveKeys": 4,
+  "workersPerKey": 4,
+  "renderPct": 60,
+  "autoStart": true,
+  "deviceMix": "balanced",
+  "workers": 4,
+  "minDelayMs": 300,
+  "maxDelayMs": 800
+}

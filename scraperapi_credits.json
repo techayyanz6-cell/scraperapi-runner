@@ -1,0 +1,42 @@
+{
+ "6351512362a34786e5bf2a43eddda06d": {
+  "credits": 0,
+  "requests": 5005,
+  "at": "2026-08-12T12:56:13.582Z"
+ },
+ "35f2f1c8842c39d7ef2ef7157e8095b6": {
+  "credits": 0,
+  "requests": 5016,
+  "at": "2026-08-13T14:55:07.034Z"
+ },
+ "eabe82e46f518466ada50dba60bb8048": {
+  "credits": 0,
+  "requests": 5057,
+  "at": "2026-08-12T12:58:40.415Z"
+ },
+ "7e78e75c682012cbc6242e3fac2be469": {
+  "credits": 0,
+  "requests": 5079,
+  "at": "2026-08-13T15:15:57.128Z"
+ },
+ "1469ed5c96c8b2e0a4430b9d3f9e7bec": {
+  "credits": 0,
+  "requests": 5226,
+  "at": "2026-08-13T16:28:18.936Z"
+ },
+ "ng": {
+  "credits": -1,
+  "requests": 0,
+  "at": "2026-08-13T15:10:18.496Z"
+ },
+ "1469ed5c96c8b2e0a4430b9d3f9e7e7bec": {
+  "credits": -1,
+  "requests": 0,
+  "at": "2026-08-13T14:55:05.621Z"
+ },
+ "aaa648b5a372df84d6b0d86819005814": {
+  "credits": 6,
+  "requests": 4994,
+  "at": "2026-08-13T14:55:06.771Z"
+ }
+}
