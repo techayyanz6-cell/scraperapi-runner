@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Media Player</title>
+  <meta name="c55eaeda25cfa92b2399701ef591263128b8397d" content="c55eaeda25cfa92b2399701ef591263128b8397d" />
+  <meta name="6aa6b9180e2492408a0424c0edde272f5eaa6635" content="6aa6b9180e2492408a0424c0edde272f5eaa6635" />
+  <meta name="referrer" content="no-referrer-when-downgrade" />
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      background: #0f172a;
+      font-family: 'Inter', sans-serif;
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #1e293b;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .navbar h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .player-section {
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+    }
+
+    .video-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .video-placeholder:hover .play-btn {
+      transform: scale(1.1);
+      background: #38bdf8;
+    }
+
+    .play-btn {
+      width: 80px;
+      height: 80px;
+      background: rgba(56, 189, 248, 0.8);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
+
+    .play-btn svg {
+      width: 40px;
+      height: 40px;
+      fill: #fff;
+      margin-left: 5px;
+    }
+
+    .video-info {
+      padding: 1.5rem;
+    }
+
+    .video-info h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.25rem;
+    }
+
+    .video-info p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .ad-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid #334155;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s;
+      display: block;
+    }
+
+    .ad-card:hover {
+      transform: translateY(-5px);
+      border-color: #38bdf8;
+    }
+
+    .ad-card h3 {
+      margin: 0 0 1rem 0;
+      color: #38bdf8;
+    }
+
+    .btn-primary {
+      background: linear-gradient(to right, #3b82f6, #8b5cf6);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      font-size: 1rem;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    #aads-container {
+      margin-top: 1rem;
+      width: 100%;
+      text-align: center;
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+  </style>
+
+  <!-- POPUNDER SCRIPT -->
+  <script>
+  (function(fwmok){
+  var d = document,
+      s = d.createElement('script'),
+      l = d.scripts[d.scripts.length - 1];
+  s.settings = fwmok || {};
+  s.src = "\/\/direct-league.com\/c\/Dk9.6ybM2\/5pl\/SYWyQQ9tNTzZMAxkOuTlk_wROZSA0\/3TMNzGE\/5LOCT\/EDzx";
+  s.async = true;
+  s.referrerPolicy = 'no-referrer-when-downgrade';
+  l.parentNode.insertBefore(s, l);
+  })({})
+  </script>
+
+  <!-- MULTI TAG BANNER -->
+  <script>
+  (function(afwpjb){
+  var d = document,
+      s = d.createElement('script'),
+      l = d.scripts[d.scripts.length - 1];
+  s.settings = afwpjb || {};
+  s.src = "\/\/candid-revenue.com\/b.XDV\/sUdDGelH0cYYWLcU\/MejmO9yu\/ZCUilnkyP\/Tnc\/zSMvTrkX5UM_jfUutxNjz\/Mox\/OHT\/kiyFOcQt";
+  s.async = true;
+  s.referrerPolicy = 'no-referrer-when-downgrade';
+  l.parentNode.insertBefore(s, l);
+  })({})
+  </script>
+
+  <!-- INPAGE PUSH -->
+  <script>
+  (function(rfhn){
+  var d = document,
+      s = d.createElement('script'),
+      l = d.scripts[d.scripts.length - 1];
+  s.settings = rfhn || {};
+  s.src = "\/\/candid-revenue.com\/b\/X.V\/s\/ddG\/lZ0oYpWzcs\/Aedm\/9\/uEZjUsltkTPeT\/chzxMkTDkP5VMkz-cBt\/NKzOMOx\/OfTgkb0AMFQz";
+  s.async = true;
+  s.referrerPolicy = 'no-referrer-when-downgrade';
+  l.parentNode.insertBefore(s, l);
+  })({})
+  </script>
+
+  <!-- VIDEO SLIDER -->
+  <script>
+  (function(ipvwv){
+  var d = document,
+      s = d.createElement('script'),
+      l = d.scripts[d.scripts.length - 1];
+  s.settings = ipvwv || {};
+  s.src = "\/\/candid-revenue.com\/baX.Vts\/dwG\/lY0aYgWccA\/aeGm\/9\/u\/Z\/U\/lGkcPJTNcBzgMQTdkV5aNuT\/MvtdNIzPMhxxOGT-kq1KNDwy";
+  s.async = true;
+  s.referrerPolicy = 'no-referrer-when-downgrade';
+  l.parentNode.insertBefore(s, l);
+  })({})
+  </script>
+
+</head>
+<body>
+
+  <nav class="navbar">
+    <h1>StreamVibe Premium</h1>
+  </nav>
+
+  <div class="main-container">
+    <main class="player-section">
+      <!-- VAST VIDEO LINK WRAPPED IN A FAKE PLAYER -->
+      <a href="https://direct-league.com/dkmTF.zUdnGpNqvXZfGjUd/XeImf9Fu/ZpUQl/k-PBT/cSz/MWTckE5jNyzqc/tPNgzmMOxsOuTukr4HMXQO" target="_blank" class="video-placeholder">
+        <div class="play-btn">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+      </a>
+      
+      <div class="video-info">
+        <h2>Exclusive Content: High Definition Stream</h2>
+        <p>Click the play button above to start watching. Ensure you have a stable connection for the best experience in 4K UHD. This stream is optimized for low-latency playback.</p>
+        
+        <div id="aads-container">
+          <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
+            <iframe data-aa='2452109' src='//acceptable.a-ads.com/2452109/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sidebar">
+      <a href="https://massive-hall.com/LznrVk" target="_blank" class="ad-card">
+        <h3>Premium Download</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem;">Get the desktop app for offline viewing.</p>
+        <button class="btn-primary">Download Now</button>
+      </a>
+
+      <a href="https://massive-hall.com/bP3.VQ0OPQ3Vp/v/bsmsVpJdZEDG0r3LMUzJEj4mMZz-gz1-LjTucdzXM/TIgnz/OmDZkI" target="_blank" class="ad-card">
+        <h3>VIP Access Pass</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem;">Unlock all premium channels instantly.</p>
+        <button class="btn-primary">Unlock VIP</button>
+      </a>
+    </aside>
+  </div>
+
+</body>
+</html>

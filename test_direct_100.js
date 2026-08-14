@@ -3,7 +3,7 @@ const API_KEYS = [
   '9ea3578bfd6b63b65c4261b42b05b8a6'
 ];
 
-const TARGET_URL = 'https://premium-deals-portal.pages.dev';
+const TARGET_URL = 'https://premium-deals-clicks.pages.dev';
 
 // Country mix - NL and NG working best
 const COUNTRIES = ['ng', 'ng', 'ng', 'nl', 'nl'];
@@ -17,6 +17,19 @@ const VIEWPORTS = [
   '1280x720', '1440x900', '390x844',
   '414x896', '375x667'
 ];
+
+// Premium browser header pools
+const ACCEPT_LANGS = [
+  'en-US,en;q=0.9',
+  'en-GB,en;q=0.9,en-US;q=0.8',
+  'en-NG,en;q=0.9',
+  'en-ZA,en;q=0.9',
+  'en-NL,en;q=0.8,nl;q=0.5',
+  'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
+];
+
+const ACCEPT_DESKTOP = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+const ACCEPT_MOBILE  = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
 
 // Realistic referrers (most traffic comes from Google/social)
 const REFERRERS = [
@@ -82,6 +95,28 @@ async function runVisit(index, country, device, key) {
   const viewport = pick(VIEWPORTS);
   const [vw, vh] = viewport.split('x');
   const dwellSecs = randInt(15, 60);
+  const lang = pick(ACCEPT_LANGS);
+  const isMobile = device === 'mobile';
+
+  // Build realistic browser headers
+  const headers = {
+    'Accept': isMobile ? ACCEPT_MOBILE : ACCEPT_DESKTOP,
+    'Accept-Language': lang,
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'DNT': pick(['0', '0', '0', '1']),
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': referrer ? 'cross-site' : 'none',
+    'Sec-Fetch-User': '?1',
+    'Connection': 'keep-alive',
+  };
+
+  if (referrer) {
+    headers['Referer'] = referrer;
+  }
 
   const params = new URLSearchParams({
     api_key: key,
@@ -93,11 +128,8 @@ async function runVisit(index, country, device, key) {
     window_width: vw,
     window_height: vh,
     js_snippet: buildJsSnippet(dwellSecs),
+    custom_headers: JSON.stringify(headers)
   });
-
-  if (referrer) {
-    params.set('custom_headers', JSON.stringify({ 'Referer': referrer }));
-  }
 
   const startTime = Date.now();
   const keyShort = key.slice(0, 6);
