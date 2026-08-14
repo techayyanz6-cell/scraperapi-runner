@@ -6,7 +6,19 @@
       "requests": 216,
       "status": "active",
       "addedAt": "2026-08-13T20:48:00.000Z",
-      "lastChecked": "2026-08-13T20:48:00.000Z"
+      "lastChecked": "2026-08-13T20:48:00.000Z",
+      "exhaustedAt": "2026-08-13T23:23:03.135Z",
+      "exhaustedReason": "Verified credits left: 0",
+      "lastActivated": "2026-08-13T23:23:06.125Z"
+    },
+    {
+      "key": "c70dd0b74f4e4611ed0f39619ee49340",
+      "credits": 4206,
+      "requests": 794,
+      "status": "active",
+      "addedAt": "2026-08-13T23:24:13.772Z",
+      "lastChecked": "2026-08-13T23:24:13.772Z",
+      "lastActivated": "2026-08-13T23:24:13.773Z"
     }
   ],
   "links": [
@@ -16,16 +28,7 @@
     "https://www.effectivecpmnetwork.com/f0qx2zbz?key=55c9b86cf539b6f87e8274e633eafcf0"
   ],
   "countries": [
-    "ng",
-    "ng",
-    "ng",
-    "us",
-    "us",
-    "gb",
-    "de",
-    "za",
-    "nl",
-    "ca"
+    "nl"
   ],
   "maxActiveKeys": 4,
   "workersPerKey": 2,
