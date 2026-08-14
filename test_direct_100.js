@@ -1,48 +1,122 @@
-const API_KEY = '79a286ef74ab0e7b22b582ebc4e957ee';
-const TARGET_URL = 'https://www.effectivecpmnetwork.com/mw6dcxpxp?key=a82a80fb72016668fb27decb6d8d487e';
-
-// country: code, premium: bool
-// NG/NL = standard render (5cr)
-const VISIT_PLAN = [
-  { country: 'ng', premium: false },
-  { country: 'ng', premium: false },
-  { country: 'ng', premium: false },
-  { country: 'nl', premium: false },
-  { country: 'nl', premium: false },
+const API_KEYS = [
+  '79a286ef74ab0e7b22b582ebc4e957ee',
+  '9ea3578bfd6b63b65c4261b42b05b8a6'
 ];
 
-// Let ScraperAPI handle UAs based on device
-const DEVICES = ['desktop', 'mobile'];
+const TARGET_URL = 'https://premium-deals-portal.pages.dev';
 
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// Country mix - NL and NG working best
+const COUNTRIES = ['ng', 'ng', 'ng', 'nl', 'nl'];
 
-async function runVisit(index, country, premium) {
-  const deviceType = pick(DEVICES);
+// Devices rotation
+const DEVICES = ['desktop', 'desktop', 'desktop', 'mobile', 'mobile'];
+
+// Realistic viewport sizes
+const VIEWPORTS = [
+  '1920x1080', '1366x768', '1536x864',
+  '1280x720', '1440x900', '390x844',
+  '414x896', '375x667'
+];
+
+// Realistic referrers (most traffic comes from Google/social)
+const REFERRERS = [
+  'https://www.google.com/search?q=casino+bonus+deals',
+  'https://www.google.com/search?q=online+entertainment',
+  'https://www.google.ng/search?q=best+casino+games',
+  'https://www.facebook.com/',
+  'https://www.twitter.com/',
+  'https://www.reddit.com/r/onlinecasino/',
+  'https://t.co/random_tweet',
+  ''  // direct traffic
+];
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// Human scroll + dwell JS snippet (URL encoded)
+function buildJsSnippet(dwellSeconds) {
+  const js = `
+    (async () => {
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      const h = document.body.scrollHeight;
+      
+      // Simulate reading: scroll down in chunks
+      await sleep(${randInt(800, 2000)});
+      window.scrollTo({ top: h * 0.2, behavior: 'smooth' });
+      await sleep(${randInt(1500, 3000)});
+      window.scrollTo({ top: h * 0.4, behavior: 'smooth' });
+      await sleep(${randInt(1000, 2500)});
+      window.scrollTo({ top: h * 0.6, behavior: 'smooth' });
+      await sleep(${randInt(2000, 4000)});
+      window.scrollTo({ top: h * 0.8, behavior: 'smooth' });
+      await sleep(${randInt(1000, 2000)});
+      window.scrollTo({ top: h, behavior: 'smooth' });
+      
+      // Randomly click a card/link on the page
+      await sleep(${randInt(1500, 3000)});
+      const links = Array.from(document.querySelectorAll('a.card, a[href]'))
+        .filter(a => a.href && !a.href.includes('javascript'));
+      if (links.length > 0) {
+        const randomLink = links[Math.floor(Math.random() * links.length)];
+        randomLink.click();
+      }
+      
+      // Stay on page
+      await sleep(${dwellSeconds * 1000});
+    })();
+  `;
+  return encodeURIComponent(js.trim());
+}
+
+async function runVisit(index, country, device, key) {
+  const referrer = pick(REFERRERS);
+  const viewport = pick(VIEWPORTS);
+  const [vw, vh] = viewport.split('x');
+  const dwellSecs = randInt(15, 60);
+
   const params = new URLSearchParams({
-    api_key: API_KEY,
+    api_key: key,
     url: TARGET_URL,
     country,
-    device: deviceType,
+    device,
     render: 'true',
     wait_until: 'networkidle2',
-    ...(premium ? { premium: 'true' } : {}),
+    window_width: vw,
+    window_height: vh,
+    js_snippet: buildJsSnippet(dwellSecs),
   });
 
-  const credits = premium ? 10 : 5;
+  if (referrer) {
+    params.set('custom_headers', JSON.stringify({ 'Referer': referrer }));
+  }
+
   const startTime = Date.now();
+  const keyShort = key.slice(0, 6);
+
   try {
-    const res = await fetch(`https://api.scraperapi.com?${params}`, { signal: AbortSignal.timeout(95000) });
+    const res = await fetch(`https://api.scraperapi.com?${params}`, {
+      signal: AbortSignal.timeout(120000)
+    });
     const body = await res.text();
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const title = (body.match(/<title>(.*?)<\/title>/i) || [])[1] || 'None';
     const size = body.length;
     const icon = size > 1000 ? '✅' : size <= 118 ? '❌' : '⚠️';
-    const mode = premium ? '🔑PREM' : '🔓STD';
 
-    console.log(`[#${index}] ${country.toUpperCase()} ${deviceType === 'mobile' ? '📱' : '💻'} ${mode} | ${icon} ${size}b | ${duration}s | ${credits}cr | "${title}"`);
+    console.log(`[#${index}] ${country.toUpperCase()} ${device === 'mobile' ? '📱' : '💻'} [${keyShort}] | ${icon} ${size}b | ${duration}s | dwell:${dwellSecs}s | ref:${referrer ? new URL(referrer).hostname : 'direct'} | "${title}"`);
     return { loaded: size > 1000, status: res.status };
   } catch (err) {
-    console.error(`[#${index}] ${country.toUpperCase()} | ❌ Error: ${err.message}`);
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`[#${index}] ${country.toUpperCase()} [${keyShort}] | ❌ Error after ${duration}s: ${err.message}`);
     return { loaded: false, status: 0 };
   }
 }
@@ -52,29 +126,43 @@ async function start() {
   let round = 1;
 
   console.log('==================================================');
-  console.log(`🚀 Runner 1 — NG+NL (std)`);
-  console.log(`🔑 Key: ${API_KEY.slice(0, 8)}...`);
-  console.log(`💡 NG/NL=5cr`);
-  console.log(`⏳ Runs until credits exhausted or Ctrl+C`);
+  console.log(`🤖→🧑 Human Behavior Runner`);
+  console.log(`🌍 Countries: NG + NL`);
+  console.log(`🎭 Referrers: Google, Facebook, Twitter, Reddit, Direct`);
+  console.log(`📜 Scroll: Realistic slow scroll + random click`);
+  console.log(`⏱️  Dwell: 15-60s per visit`);
+  console.log(`🔑 Keys: ${API_KEYS.map(k => k.slice(0, 6)).join(', ')}`);
   console.log('==================================================\n');
 
   while (true) {
     console.log(`\n--- Round ${round} ---`);
 
-    for (const { country, premium } of VISIT_PLAN) {
+    for (let i = 0; i < COUNTRIES.length; i++) {
       totalVisits++;
-      const result = await runVisit(totalVisits, country, premium);
+      const country = COUNTRIES[i % COUNTRIES.length];
+      const device = DEVICES[i % DEVICES.length];
+      const key = pick(API_KEYS);
+
+      const result = await runVisit(totalVisits, country, device, key);
 
       if (result.status === 403 || result.status === 429) {
-        console.log(`\n🛑 Credits exhausted! Total visits: ${totalVisits}`);
+        console.log(`\n🛑 Credits exhausted (HTTP ${result.status})! Total visits: ${totalVisits}`);
         process.exit(0);
       }
-      await new Promise(r => setTimeout(r, 3000));
+
+      // Human-like delay between visits: 8-25 seconds
+      const delay = randInt(8000, 25000);
+      console.log(`⏳ Next visit in ${(delay / 1000).toFixed(1)}s...`);
+      await sleep(delay);
     }
 
-    console.log(`📊 Round ${round} done | Total visits: ${totalVisits}`);
+    console.log(`\n📊 Round ${round} done | Total visits: ${totalVisits}`);
     round++;
-    await new Promise(r => setTimeout(r, 3000));
+
+    // Longer break between rounds (simulate session gaps)
+    const roundBreak = randInt(30000, 90000);
+    console.log(`💤 Round break: ${(roundBreak / 1000).toFixed(0)}s...`);
+    await sleep(roundBreak);
   }
 }
 

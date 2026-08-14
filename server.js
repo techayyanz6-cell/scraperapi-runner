@@ -18,6 +18,26 @@ const DEFAULT_COUNTRIES = ['us', 'gb', 'ca', 'au', 'de', 'nl', 'za', 'ng', 'fr',
 
 // ScraperAPI natively handles User Agents based on 'device' parameter
 
+// Human behavior simulation constants
+const REFERRERS = [
+  'https://www.google.com/search?q=casino+bonus',
+  'https://www.google.com/search?q=online+entertainment+deals',
+  'https://www.google.com/search?q=best+offers+today',
+  'https://www.facebook.com/',
+  'https://www.twitter.com/',
+  'https://www.reddit.com/r/onlinecasino/',
+  'https://t.co/xrandom',
+  '',  // direct traffic
+  '',
+  ''
+];
+
+const VIEWPORTS = [
+  [1920, 1080], [1366, 768], [1536, 864],
+  [1280, 720], [1440, 900],
+  [390, 844], [414, 896], [375, 667]
+];
+
 // Configuration & persistent state
 let data = {
   keys: [], // array of { key, credits, requests, status, addedAt, lastChecked, exhaustedReason }
@@ -276,22 +296,60 @@ function extractAds(body) {
   return urls.slice(0, 5);
 }
 
+// Build a human-like scroll + click JS snippet
+function buildHumanJsSnippet() {
+  const dwellMs = (Math.floor(Math.random() * 45) + 15) * 1000; // 15-60s
+  const p1 = Math.floor(Math.random() * 20) + 15;  // 15-35%
+  const p2 = Math.floor(Math.random() * 20) + 35;  // 35-55%
+  const p3 = Math.floor(Math.random() * 20) + 55;  // 55-75%
+  const d1 = Math.floor(Math.random() * 1500) + 800;
+  const d2 = Math.floor(Math.random() * 2000) + 1200;
+  const d3 = Math.floor(Math.random() * 2500) + 1500;
+  const d4 = Math.floor(Math.random() * 2000) + 2000;
+  const clickDelay = Math.floor(Math.random() * 3000) + 2000;
+
+  const js = `(async()=>{` +
+    `const s=ms=>new Promise(r=>setTimeout(r,ms));` +
+    `const h=document.body.scrollHeight;` +
+    `await s(${d1});window.scrollTo({top:h*${p1/100},behavior:'smooth'});` +
+    `await s(${d2});window.scrollTo({top:h*${p2/100},behavior:'smooth'});` +
+    `await s(${d3});window.scrollTo({top:h*${p3/100},behavior:'smooth'});` +
+    `await s(${d4});window.scrollTo({top:h,behavior:'smooth'});` +
+    `await s(${clickDelay});` +
+    `const ls=Array.from(document.querySelectorAll('a')).filter(a=>a.href&&!a.href.includes('javascript')&&!a.href.includes('mailto'));` +
+    `if(ls.length>0){ls[Math.floor(Math.random()*ls.length)].click();}` +
+    `await s(${dwellMs});` +
+  `})();`;
+  return encodeURIComponent(js);
+}
+
 // Request execution engine
 async function render(key, link, country, device, full) {
+  const referrer = pick(REFERRERS);
+  const [vw, vh] = pick(VIEWPORTS);
+
   const params = new URLSearchParams({
     api_key: key,
     url: link,
     country,
-    device
+    device,
+    window_width: vw,
+    window_height: vh
   });
+
+  if (referrer) {
+    params.set('custom_headers', JSON.stringify({ 'Referer': referrer }));
+  }
+
   if (full) {
     params.set('render', 'true');
     params.set('wait_until', 'networkidle2');
+    params.set('js_snippet', buildHumanJsSnippet());
   }
 
   try {
     const controller = new AbortController();
-    const timeoutMs = full ? 95000 : 35000;
+    const timeoutMs = full ? 120000 : 35000;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     const r = await fetch(`${API}?${params}`, { signal: controller.signal });
@@ -300,6 +358,7 @@ async function render(key, link, country, device, full) {
     const body = await r.text();
     const title = (body.match(/<title>(.*?)<\/title>/i) || [])[1] || '';
     const isLanding = r.status === 200 && body.length > 800 && (full ? true : title.trim().length > 0);
+    const ref = referrer ? (() => { try { return new URL(referrer).hostname; } catch { return 'direct'; } })() : 'direct';
 
     return {
       status: r.status,
@@ -307,6 +366,8 @@ async function render(key, link, country, device, full) {
       title: title.trim().slice(0, 60),
       landing: isLanding,
       device,
+      referrer: ref,
+      viewport: `${vw}x${vh}`,
       ads: [],
       rawBodySnippet: body.slice(0, 500)
     };
