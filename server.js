@@ -410,17 +410,87 @@ async function worker(workerId) {
     }
     const link = pick(validLinks);
 
-    // Pick country and device
+    // Pick country and rotating device types/browsers
     const countries = data.countries && data.countries.length ? data.countries : DEFAULT_COUNTRIES;
     let country = pick(countries);
-    let device = Math.random() < 0.6 ? 'desktop' : 'mobile';
+    
+    // Rotate devices/browsers (one desktop, one TV, one android, one safari/ios)
+    const deviceRotation = ['desktop', 'tv', 'android', 'safari'];
+    const selectedMix = deviceRotation[state.visits % deviceRotation.length];
+    
+    let device = 'desktop';
+    let customUA = null;
+    
+    if (selectedMix === 'desktop') {
+      device = 'desktop';
+    } else if (selectedMix === 'tv') {
+      device = 'desktop';
+      // Simulate Smart TV UA
+      customUA = 'Mozilla/5.0 (Large Screen; SmartTV; LGE/Nexus/4.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+    } else if (selectedMix === 'android') {
+      device = 'mobile';
+      // Simulate Google Pixel / Android Chrome UA
+      customUA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+    } else if (selectedMix === 'safari') {
+      device = 'mobile';
+      // Simulate iPhone Safari UA
+      customUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
+    }
+
     const full = Math.random() < ((data.renderPct || 60) / 100);
 
     const activeKey = activeKeyObj.key;
     const keyShort = short(activeKey);
 
-    // Execute render request
-    let res = await render(activeKey, link, country, device, full);
+    // Execute render request with dynamic parameters
+    const renderParams = new URLSearchParams({
+      api_key: activeKey,
+      url: link,
+      country,
+      device
+    });
+    if (customUA) {
+      renderParams.set('user_agent', customUA);
+    }
+    if (full) {
+      renderParams.set('render', 'true');
+      renderParams.set('wait_until', 'networkidle2');
+    }
+
+    // Wrap the request logic to use the custom URL parameters
+    let res;
+    try {
+      const controller = new AbortController();
+      const timeoutMs = full ? 95000 : 35000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      const r = await fetch(`${API}?${renderParams}`, { signal: controller.signal });
+      clearTimeout(timer);
+
+      const body = await r.text();
+      const title = (body.match(/<title>(.*?)<\/title>/i) || [])[1] || '';
+      const isLanding = r.status === 200 && body.length > 800 && (full ? true : title.trim().length > 0);
+
+      res = {
+        status: r.status,
+        size: body.length,
+        title: title.trim().slice(0, 60),
+        landing: isLanding,
+        device: `${selectedMix.toUpperCase()}`,
+        ads: [],
+        rawBodySnippet: body.slice(0, 500)
+      };
+    } catch (e) {
+      res = {
+        status: 'ERR',
+        size: 0,
+        title: '',
+        landing: false,
+        err: String(e.message || e).slice(0, 80),
+        device: `${selectedMix.toUpperCase()}`,
+        ads: []
+      };
+    }
 
     // Stats buckets
     const pk = state.perKey[keyShort] = state.perKey[keyShort] || { visits: 0, landings: 0, errors: 0, clicks: 0, clickSuccess: 0 };
