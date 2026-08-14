@@ -323,10 +323,45 @@ function buildHumanJsSnippet() {
   return encodeURIComponent(js);
 }
 
+// Premium browser header pools
+const ACCEPT_LANGS = [
+  'en-US,en;q=0.9',
+  'en-GB,en;q=0.9,en-US;q=0.8',
+  'en-NG,en;q=0.9',
+  'en-ZA,en;q=0.9',
+  'en-NL,en;q=0.8,nl;q=0.5',
+  'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
+];
+
+const ACCEPT_DESKTOP = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+const ACCEPT_MOBILE  = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
+
 // Request execution engine
 async function render(key, link, country, device, full) {
   const referrer = pick(REFERRERS);
   const [vw, vh] = pick(VIEWPORTS);
+  const lang = pick(ACCEPT_LANGS);
+  const isMobile = device === 'mobile';
+
+  // Build realistic browser headers
+  const headers = {
+    'Accept': isMobile ? ACCEPT_MOBILE : ACCEPT_DESKTOP,
+    'Accept-Language': lang,
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'DNT': pick(['0', '0', '0', '1']),
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': referrer ? 'cross-site' : 'none',
+    'Sec-Fetch-User': '?1',
+    'Connection': 'keep-alive',
+  };
+
+  if (referrer) {
+    headers['Referer'] = referrer;
+  }
 
   const params = new URLSearchParams({
     api_key: key,
@@ -334,12 +369,9 @@ async function render(key, link, country, device, full) {
     country,
     device,
     window_width: vw,
-    window_height: vh
+    window_height: vh,
+    custom_headers: JSON.stringify(headers),
   });
-
-  if (referrer) {
-    params.set('custom_headers', JSON.stringify({ 'Referer': referrer }));
-  }
 
   if (full) {
     params.set('render', 'true');
@@ -368,6 +400,7 @@ async function render(key, link, country, device, full) {
       device,
       referrer: ref,
       viewport: `${vw}x${vh}`,
+      lang,
       ads: [],
       rawBodySnippet: body.slice(0, 500)
     };
@@ -503,55 +536,8 @@ async function worker(workerId) {
     const activeKey = activeKeyObj.key;
     const keyShort = short(activeKey);
 
-    // Execute render request with dynamic parameters
-    const renderParams = new URLSearchParams({
-      api_key: activeKey,
-      url: link,
-      country,
-      device
-    });
-    if (customUA) {
-      renderParams.set('user_agent', customUA);
-    }
-    if (full) {
-      renderParams.set('render', 'true');
-      renderParams.set('wait_until', 'networkidle2');
-    }
-
-    // Wrap the request logic to use the custom URL parameters
-    let res;
-    try {
-      const controller = new AbortController();
-      const timeoutMs = full ? 95000 : 35000;
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-      const r = await fetch(`${API}?${renderParams}`, { signal: controller.signal });
-      clearTimeout(timer);
-
-      const body = await r.text();
-      const title = (body.match(/<title>(.*?)<\/title>/i) || [])[1] || '';
-      const isLanding = r.status === 200 && body.length > 800 && (full ? true : title.trim().length > 0);
-
-      res = {
-        status: r.status,
-        size: body.length,
-        title: title.trim().slice(0, 60),
-        landing: isLanding,
-        device: `${selectedMix.toUpperCase()}`,
-        ads: [],
-        rawBodySnippet: body.slice(0, 500)
-      };
-    } catch (e) {
-      res = {
-        status: 'ERR',
-        size: 0,
-        title: '',
-        landing: false,
-        err: String(e.message || e).slice(0, 80),
-        device: `${selectedMix.toUpperCase()}`,
-        ads: []
-      };
-    }
+    // Execute render request with dynamic parameters utilizing custom render function
+    const res = await render(activeKey, link, country, device, full);
 
     // Stats buckets
     const pk = state.perKey[keyShort] = state.perKey[keyShort] || { visits: 0, landings: 0, errors: 0, clicks: 0, clickSuccess: 0 };
